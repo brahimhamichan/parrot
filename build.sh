@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 APP="$HOME/Applications/Parrot.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 swiftc -O Parrot.swift -o "$APP/Contents/MacOS/Parrot"
-cp speakd.py AppIcon.icns "$APP/Contents/Resources/"
+cp -R speakd.py AppIcon.icns models "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -25,5 +25,5 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 # Pin the designated requirement to the bundle id so rebuilds keep the Accessibility grant.
 codesign --force --sign - -r='designated => identifier "dev.brahim.parrot"' "$APP"
-osascript -e "tell application \"System Events\" to if not (exists login item \"Parrot\") then make login item at end with properties {path:\"$APP\", hidden:true}" >/dev/null
+osascript -e "tell application \"System Events\" to if not (exists login item \"Parrot\") then make login item at end with properties {path:\"$APP\", hidden:true}" >/dev/null || echo "Add Parrot to Login Items manually if you want it at startup."
 echo "built $APP"

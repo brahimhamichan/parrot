@@ -15,7 +15,7 @@ import numpy as np
 import sounddevice as sd
 from kokoro_onnx import Kokoro
 
-MODELS = Path.home() / ".local/share/local-tts/models"
+MODELS = Path(__file__).resolve().parent / "models"
 PORT, SR = 47811, 24000
 
 kokoro = Kokoro(str(MODELS / "kokoro-v1.0.int8.onnx"), str(MODELS / "voices-v1.0.bin"))

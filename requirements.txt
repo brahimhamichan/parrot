@@ -1,0 +1,2 @@
+kokoro-onnx==0.6.1
+sounddevice==0.5.6
