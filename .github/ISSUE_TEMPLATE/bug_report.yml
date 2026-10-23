@@ -1,0 +1,29 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and Mac model
+      placeholder: macOS 15.1, MacBook Pro M3
+    validations:
+      required: true
+  - type: input
+    id: app
+    attributes:
+      label: App you were reading from
+      placeholder: Safari, Notes, VS Code…
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Last lines of ~/Library/Logs/Parrot.log
+      render: text
