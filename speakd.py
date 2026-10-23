@@ -2,7 +2,7 @@
 
 POST /speak (text body)  stream speech sentence by sentence (replaces current speech)
 POST /stop | /pause | /resume | /toggle-pause | /skip
-POST /config  voice=af_heart&speed=1.25  (applies from the next sentence)
+POST /config  voice=af_heart&speed=1.25&model=/abs/path.onnx  (applies from the next sentence)
 GET  /status  idle | speaking | paused
 GET  /voices  newline-separated English voice ids
 """
@@ -18,10 +18,28 @@ from kokoro_onnx import Kokoro
 MODELS = Path(__file__).resolve().parent / "models"
 PORT, SR = 47811, 24000
 
-kokoro = Kokoro(str(MODELS / "kokoro-v1.0.int8.onnx"), str(MODELS / "voices-v1.0.bin"))
+VOICES_FILE = str(MODELS / "voices-v1.0.bin")
+config = {"voice": "af_heart", "speed": 1.25, "model": str(MODELS / "kokoro-v1.0.int8.onnx")}
+model_lock = threading.Lock()  # held while synthesizing or swapping models
+
+
+def load(model_path: str) -> Kokoro:
+    k = Kokoro(model_path, VOICES_FILE)
+    k.create("Ready.", voice=config["voice"], speed=config["speed"])  # warm up
+    return k
+
+
+kokoro = load(config["model"])
 VOICES = [v for v in kokoro.get_voices() if v[:2] in ("af", "am", "bf", "bm")]
-config = {"voice": "af_heart", "speed": 1.25}
-kokoro.create("Ready.", voice=config["voice"], speed=config["speed"])  # warm up
+
+
+def switch_model(path: str):
+    """Load a different model file in the background; keeps the current one until the new one is ready."""
+    global kokoro
+    if path == config["model"] or not path.endswith(".onnx") or not Path(path).is_file(): return
+    new = load(path)
+    with model_lock:
+        kokoro, config["model"] = new, path
 
 
 class Player:
@@ -99,7 +117,8 @@ def synth(text: str, gen: int):
         while player.q.qsize() > 2 and gen == player.generation:
             threading.Event().wait(0.05)
         voice = config["voice"]
-        samples, _ = kokoro.create(c, voice=voice, speed=config["speed"], lang="en-gb" if voice[0] == "b" else "en-us")
+        with model_lock:
+            samples, _ = kokoro.create(c, voice=voice, speed=config["speed"], lang="en-gb" if voice[0] == "b" else "en-us")
         with player.lock:
             if gen != player.generation: return
             player.q.put(samples.astype(np.float32)); player.q.put(None)
@@ -121,10 +140,13 @@ class Handler(BaseHTTPRequestHandler):
             q = {k: v[0] for k, v in parse_qs(body).items()}
             if q.get("voice") in VOICES: config["voice"] = q["voice"]
             if "speed" in q: config["speed"] = min(3.0, max(0.5, float(q["speed"])))
+            if "model" in q: threading.Thread(target=switch_model, args=(q["model"],), daemon=True).start()
         self._reply("ok")
 
     def do_GET(self):
-        self._reply("\n".join(VOICES) if self.path == "/voices" else player.status)
+        if self.path == "/voices": self._reply("\n".join(VOICES))
+        elif self.path == "/model": self._reply(config["model"])
+        else: self._reply(player.status)
 
     def _reply(self, msg: str):
         self.send_response(200); self.end_headers(); self.wfile.write(msg.encode())

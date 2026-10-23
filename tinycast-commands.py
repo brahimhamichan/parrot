@@ -3,7 +3,7 @@ import json, subprocess, time, uuid
 
 DOMAIN = "com.tinycast.app"
 COMMANDS = [("Parrot: Read Selection", "speak"), ("Parrot: Pause / Resume", "pause"), ("Parrot: Stop", "stop"),
-            ("Parrot: Skip Sentence", "skip"), ("Parrot: Faster", "faster"), ("Parrot: Slower", "slower")]
+            ("Parrot: Skip Sentence", "skip"), ("Parrot: Faster", "faster"), ("Parrot: Slower", "slower"), ("Parrot: Settings", "settings")]
 
 
 def read_existing():
