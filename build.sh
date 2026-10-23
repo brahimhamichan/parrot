@@ -1,0 +1,29 @@
+#!/bin/sh
+# Builds ~/Applications/Parrot.app (ad-hoc signed) and registers it as a login item.
+set -e
+cd "$(dirname "$0")"
+APP="$HOME/Applications/Parrot.app"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+swiftc -O Parrot.swift -o "$APP/Contents/MacOS/Parrot"
+cp speakd.py AppIcon.icns "$APP/Contents/Resources/"
+cat > "$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>dev.brahim.parrot</string>
+<key>CFBundleName</key><string>Parrot</string>
+<key>CFBundleExecutable</key><string>Parrot</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>1.0</string>
+<key>LSUIElement</key><true/>
+<key>CFBundleIconFile</key><string>AppIcon</string>
+<key>CFBundleURLTypes</key><array><dict>
+  <key>CFBundleURLName</key><string>Parrot</string>
+  <key>CFBundleURLSchemes</key><array><string>parrot</string></array>
+</dict></array>
+</dict></plist>
+PLIST
+# Pin the designated requirement to the bundle id so rebuilds keep the Accessibility grant.
+codesign --force --sign - -r='designated => identifier "dev.brahim.parrot"' "$APP"
+osascript -e "tell application \"System Events\" to if not (exists login item \"Parrot\") then make login item at end with properties {path:\"$APP\", hidden:true}" >/dev/null
+echo "built $APP"
