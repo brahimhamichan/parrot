@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="assets/icon.png" width="160" alt="Parrot icon">
+<img src="assets/icon.png" width="160" alt="Parrot: free offline text-to-speech app for Mac">
 
-# Parrot
+# Parrot: Free Offline Text-to-Speech for Mac
 
-**Select any text on your Mac, press ⌥Esc, and hear it read aloud in a natural voice, fully offline.**
+**Select any text on your Mac, press ⌥Esc, and hear it read aloud in a natural AI voice. Free, open source and fully offline.**
 
 [![macOS](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](#requirements)
 [![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-native-34C759)](#requirements)
@@ -13,12 +13,16 @@
 [![Kokoro TTS](https://img.shields.io/badge/voice-Kokoro%2082M-8B5CF6)](https://github.com/hexgrad/kokoro)
 [![Offline](https://img.shields.io/badge/runs-100%25%20offline-0EA5E9)](#privacy)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/brahimhamichan/parrot)](https://github.com/brahimhamichan/parrot/releases)
+[![GitHub stars](https://img.shields.io/github/stars/brahimhamichan/parrot?style=social)](https://github.com/brahimhamichan/parrot/stargazers)
 
 </div>
 
 ---
 
-Parrot is a tiny menu-bar app that reads your selected text with [Kokoro](https://github.com/hexgrad/kokoro), an open-weight text-to-speech model that sounds far more human than the built-in macOS voices. Everything runs on your Mac: no account, no API key, no cloud.
+Parrot is a free, open-source **text-to-speech (TTS) app for macOS** that reads selected text aloud in any app: web pages, PDFs, emails, documents, notes and code. It's a natural-sounding alternative to the built-in macOS **Speak Selection** feature, powered by [Kokoro](https://github.com/hexgrad/kokoro), an open-weight AI voice model that runs locally on your Mac. No account, no API key, no subscription and no cloud: your text never leaves your computer.
+
+Use it to listen to articles instead of reading them, proofread your own writing by ear, rest your eyes, or help with dyslexia, ADHD and low vision.
 
 ## Features
 
@@ -27,7 +31,7 @@ Parrot is a tiny menu-bar app that reads your selected text with [Kokoro](https:
 - 🎛️ **Full playback control.** Pause, resume, skip a sentence or stop, from hotkeys or the menu-bar popover.
 - 🧠 **Choose your model.** The fast model is built in; download Balanced (169 MB) or Best (310 MB) quality from Settings with one click.
 - 🗣️ **28 English voices.** American and British, female and male, each previewed when you pick it.
-- 🐇 **Adjustable speed** from 0.8× to 2.5×, applied from the next sentence.
+- 🐇 **Adjustable speed** from 0.5× to 2.5×, applied from the next sentence.
 - 🔗 **Launcher-friendly.** A `parrot://` URL scheme, with ready-made [Tinycast](https://github.com/douo/tinycast) commands.
 - 🔒 **Private.** Text never leaves your machine.
 
@@ -133,6 +137,40 @@ defaults delete dev.brahim.parrot
 ```
 
 Also remove Parrot from Login Items and from the Accessibility list in System Settings.
+
+## Parrot vs other read-aloud tools
+
+| | Parrot | macOS Speak Selection | Speechify / NaturalReader / ElevenReader |
+|---|---|---|---|
+| Natural AI voices | ✅ Kokoro (28 English voices) | ❌ Robotic system voices | ✅ |
+| Works offline | ✅ | ✅ | ❌ Cloud based |
+| Private (text stays on your Mac) | ✅ | ✅ | ❌ |
+| Price | Free, open source | Free | Subscription for best voices |
+| Works in any app with a hotkey | ✅ ⌥Esc | ✅ | ⚠️ Mostly browser or app specific |
+| Pause, skip and speed control | ✅ | ⚠️ Limited | ✅ |
+
+## FAQ
+
+**How do I make my Mac read text aloud?**
+Install Parrot, select text in any app and press **⌥Esc**. Press it again to stop.
+
+**Is there a free text-to-speech app for Mac with natural voices?**
+Yes. Parrot is free and open source (MIT), and uses the Kokoro AI voice model, which sounds much more human than the built-in macOS voices.
+
+**Does Parrot work offline?**
+Yes. The voice model is included and runs entirely on your Mac. Internet is only needed once, during install.
+
+**Can it read PDFs, web pages and emails?**
+Yes. It reads whatever text you select in any app, including Safari, Chrome, Preview, Mail, Notes, Word, Slack and VS Code.
+
+**Is it a Speechify or NaturalReader alternative?**
+For reading selected text aloud, yes: natural voices, adjustable speed and no subscription, without uploading your text to a server.
+
+**Which Macs are supported?**
+macOS 14 Sonoma or later. It's developed on Apple Silicon (M1, M2, M3, M4).
+
+**Can I change the voice and reading speed?**
+Yes. Pick from 28 American and British voices and set the speed from 0.5× to 2.5× in the menu-bar popover.
 
 ## Contributing
 
