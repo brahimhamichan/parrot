@@ -4,12 +4,12 @@ set -e
 cd "$(dirname "$0")"
 APP="$HOME/Applications/Parrot.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-# Icon: assets/icon.svg → AppIcon.icns
+# Icon: assets/icon-source.png → AppIcon.icns
 ICONSET="$(mktemp -d)/AppIcon.iconset"; mkdir -p "$ICONSET"
-swiftc -O tools/svg2png.swift -o "$ICONSET/../svg2png"
+swiftc -O tools/makeicon.swift -o "$ICONSET/../makeicon"
 for s in 16 32 128 256 512; do
-  "$ICONSET/../svg2png" assets/icon.svg "$ICONSET/icon_${s}x${s}.png" $s
-  "$ICONSET/../svg2png" assets/icon.svg "$ICONSET/icon_${s}x${s}@2x.png" $((s * 2))
+  "$ICONSET/../makeicon" assets/icon-source.png "$ICONSET/icon_${s}x${s}.png" $s
+  "$ICONSET/../makeicon" assets/icon-source.png "$ICONSET/icon_${s}x${s}@2x.png" $((s * 2))
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 swiftc -O -parse-as-library -target "$(uname -m)-apple-macos14.0" Parrot.swift PopoverView.swift -o "$APP/Contents/MacOS/Parrot"

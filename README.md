@@ -103,7 +103,7 @@ open -g "parrot://voice?bm_george"
 - **`PopoverView.swift`**: the SwiftUI popover (player, voice picker, speed, settings).
 - **`speakd.py`**: local HTTP daemon that keeps Kokoro loaded and streams audio through one output stream, which is what makes pause and skip instant.
 - **`models/`**: Kokoro v1.0 int8 weights and voices (about 120 MB), bundled into the app at build time.
-- **`assets/icon.svg`**: the app icon, converted to `.icns` by `build.sh`.
+- **`assets/icon-source.png`**: the app icon artwork; `tools/makeicon.swift` fits it to the macOS icon shape and `build.sh` builds the `.icns`.
 
 ## Requirements
 

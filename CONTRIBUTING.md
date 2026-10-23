@@ -6,7 +6,7 @@ Thanks for helping! Parrot is intentionally small, so focused changes are easies
 
 ```sh
 ./install.sh      # once: Python environment + app
-./build.sh        # rebuild after changing Parrot.swift, speakd.py or assets/icon.svg
+./build.sh        # rebuild after changing the Swift files, speakd.py or assets/icon-source.png
 ```
 
 `build.sh` signs the app ad hoc with a designated requirement pinned to the bundle ID, so rebuilds keep the Accessibility permission.
