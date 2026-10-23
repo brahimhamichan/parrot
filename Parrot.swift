@@ -151,7 +151,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func startDaemon() {
         let p = Process()
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        p.executableURL = URL(fileURLWithPath: "\(home)/.local/share/local-tts/venv/bin/python")
+        p.executableURL = URL(fileURLWithPath: "\(home)/Library/Application Support/Parrot/venv/bin/python")
         p.arguments = [Bundle.main.path(forResource: "speakd", ofType: "py")!]
         p.terminationHandler = { [weak self] _ in  // restart if it crashes
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { if self?.daemon != nil { self?.startDaemon() } }
