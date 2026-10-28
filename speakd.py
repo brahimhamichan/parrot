@@ -52,8 +52,19 @@ class Player:
         self.lock = threading.Lock()
         self.generation = 0  # bumping this cancels the in-flight job
         self.pending = 0     # sentences synthesized or queued but not finished playing
+        self.stream = None
+        self.ensure_stream()
+
+    def ensure_stream(self):
+        """Reopen on the current default output, so switching to headphones or AirPods just works."""
+        if self.stream and self.pending > 0: return  # don't cut off speech in progress
+        if self.stream:
+            try: self.stream.close()
+            except Exception: pass
+        sd._terminate(); sd._initialize()  # refresh PortAudio's device list
         self.stream = sd.OutputStream(samplerate=SR, channels=1, dtype="float32", callback=self._cb)
         self.stream.start()
+        self.device = sd.query_devices(kind="output")["name"]
 
     def _cb(self, out, frames, *_):
         out.fill(0)
@@ -108,6 +119,8 @@ def chunks(text: str):
 
 
 def synth(text: str, gen: int):
+    try: player.ensure_stream()
+    except Exception as e: print(f"audio stream error: {e}", flush=True)
     parts = chunks(text)
     with player.lock:
         if gen == player.generation: player.pending = len(parts)
