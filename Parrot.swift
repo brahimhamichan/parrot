@@ -223,6 +223,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return w
     }()
     var escHotKey: EventHotKeyRef?
+    var pollTimer: Timer?
 
     func applicationDidFinishLaunching(_ n: Notification) {
         dbg("launched trusted=%d", AXIsProcessTrusted())
@@ -253,12 +254,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         register(kVK_Escape, optionKey, id: 1)
         register(kVK_Escape, optionKey | shiftKey, id: 2)
 
-        // Poll so the icon, popover and bare-Esc hotkey track playback and permission changes.
-        Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
-            guard let p = self?.parrot else { return }
-            if p.trusted != AXIsProcessTrusted() { p.trusted.toggle() }
-            request("status", method: "GET") { s in DispatchQueue.main.async { if let s { p.status = s } } }
-        }
+        schedulePoll()
+    }
+
+    /// Poll so the icon, popover and bare-Esc hotkey track playback and permission changes:
+    /// every 0.4s while speaking or the popover is open, every 2s when idle so the Mac can stay in low-power idle.
+    func schedulePoll() {
+        let busy = parrot.status != "idle" || popover.isShown
+        pollTimer?.invalidate()
+        pollTimer = Timer.scheduledTimer(withTimeInterval: busy ? 0.4 : 2, repeats: false) { [weak self] _ in self?.poll() }
+        pollTimer?.tolerance = busy ? 0.1 : 0.5
+    }
+
+    func poll() {
+        let p = parrot
+        if p.trusted != AXIsProcessTrusted() { p.trusted.toggle() }
+        request("status", method: "GET") { s in DispatchQueue.main.async { if let s { p.status = s } } }
+        schedulePoll()
     }
 
     @discardableResult
@@ -274,6 +286,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Plain Esc only stops speech while something is playing, so it never steals Esc otherwise.
         if parrot.status == "idle", let ref = escHotKey { UnregisterEventHotKey(ref); escHotKey = nil }
         if parrot.status != "idle", escHotKey == nil { escHotKey = register(kVK_Escape, 0, id: 3) }
+        schedulePoll()  // speed up as soon as speech starts
     }
 
     @objc func togglePopover() {
@@ -291,6 +304,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popover.show(relativeTo: anchor.contentView!.bounds, of: anchor.contentView!, preferredEdge: .minY)
         }
         popover.contentViewController?.view.window?.makeKey()
+        schedulePoll()  // live status and permission updates while the popover is open
     }
 
     /// parrot://speak|open|settings|pause|stop|skip|faster|slower|voice?af_heart|speed?1.5 — used by launchers such as Tinycast.

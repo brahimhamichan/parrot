@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - The speech daemon no longer keeps the audio output open while idle. It opens the stream to speak and closes it after 5 seconds of silence, so CoreAudio can sleep and battery drain drops.
+- The app checks playback status every 2 seconds when idle instead of every 0.4 seconds, so the Mac wakes less often.
 
 ## [1.1.0] - 2026-10-23
 
