@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- The speech daemon no longer keeps the audio output open while idle. It opens the stream to speak and closes it after 5 seconds of silence, so CoreAudio can sleep and battery drain drops.
+
 ## [1.1.0] - 2026-10-23
 
 ### Added
