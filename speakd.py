@@ -6,7 +6,7 @@ POST /config  voice=af_heart&speed=1.25&model=/abs/path.onnx  (applies from the 
 GET  /status  idle | speaking | paused
 GET  /voices  newline-separated English voice ids
 """
-import queue, re, threading
+import queue, re, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -17,6 +17,7 @@ from kokoro_onnx import Kokoro
 
 MODELS = Path(__file__).resolve().parent / "models"
 PORT, SR = 47811, 24000
+IDLE_CLOSE_S = 5  # close the output stream after this long without speech, so CoreAudio can sleep
 
 VOICES_FILE = str(MODELS / "voices-v1.0.bin")
 config = {"voice": "af_heart", "speed": 1.25, "model": str(MODELS / "kokoro-v1.0.int8.onnx")}
@@ -43,7 +44,9 @@ def switch_model(path: str):
 
 
 class Player:
-    """One persistent output stream fed by a queue of sentence buffers; pausing outputs silence."""
+    """Output stream fed by a queue of sentence buffers; pausing outputs silence.
+    The stream is opened on demand and closed after IDLE_CLOSE_S idle: an always-open stream
+    keeps coreaudiod and audioanalyticsd busy and drains the battery."""
 
     def __init__(self):
         self.q: queue.Queue = queue.Queue()
@@ -53,18 +56,37 @@ class Player:
         self.generation = 0  # bumping this cancels the in-flight job
         self.pending = 0     # sentences synthesized or queued but not finished playing
         self.stream = None
-        self.ensure_stream()
+        self.stream_lock = threading.Lock()  # separate from self.lock: closing waits for the callback, which takes self.lock
+        self.last_active = time.monotonic()
+        threading.Thread(target=self._close_when_idle, daemon=True).start()
 
     def ensure_stream(self):
         """Reopen on the current default output, so switching to headphones or AirPods just works."""
-        if self.stream and self.pending > 0: return  # don't cut off speech in progress
-        if self.stream:
-            try: self.stream.close()
-            except Exception: pass
-        sd._terminate(); sd._initialize()  # refresh PortAudio's device list
-        self.stream = sd.OutputStream(samplerate=SR, channels=1, dtype="float32", callback=self._cb)
-        self.stream.start()
-        self.device = sd.query_devices(kind="output")["name"]
+        with self.stream_lock:
+            if self.stream and self.pending > 0: return  # don't cut off speech in progress
+            self._close()
+            sd._terminate(); sd._initialize()  # refresh PortAudio's device list
+            self.stream = sd.OutputStream(samplerate=SR, channels=1, dtype="float32", callback=self._cb)
+            self.stream.start()
+            self.device = sd.query_devices(kind="output")["name"]
+            self.last_active = time.monotonic()
+
+    def _close(self):
+        if not self.stream: return
+        try: self.stream.close()
+        except Exception: pass
+        self.stream = None
+
+    def _close_when_idle(self):
+        while True:
+            time.sleep(1)
+            with self.stream_lock:
+                if self.pending > 0 and not self.paused: self.last_active = time.monotonic()
+                elif self.stream and time.monotonic() - self.last_active > IDLE_CLOSE_S: self._close()
+
+    def resume(self):
+        self.paused = False
+        if not self.stream and self.pending > 0: self.ensure_stream()  # closed while paused; queued speech is kept
 
     def _cb(self, out, frames, *_):
         out.fill(0)
@@ -146,8 +168,10 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=synth, args=(body, player.generation), daemon=True).start()
         elif p == "/stop": player.clear()
         elif p == "/pause": player.paused = True
-        elif p == "/resume": player.paused = False
-        elif p == "/toggle-pause": player.paused = not player.paused
+        elif p == "/resume": player.resume()
+        elif p == "/toggle-pause":
+            if player.paused: player.resume()
+            else: player.paused = True
         elif p == "/skip": player.skip()
         elif p == "/config":
             q = {k: v[0] for k, v in parse_qs(body).items()}
