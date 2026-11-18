@@ -2,7 +2,11 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [1.2.0] - 2026-11-18
+
+### Added
+
+- Signed, notarized drag-to-Applications DMG with automatic first-launch voice engine setup.
 
 ### Fixed
 

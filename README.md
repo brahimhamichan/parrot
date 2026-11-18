@@ -37,6 +37,16 @@ Use it to listen to articles instead of reading them, proofread your own writing
 
 ## Install
 
+1. Download [Parrot.dmg](https://github.com/brahimhamichan/parrot/releases/latest/download/Parrot.dmg), open it, and drag Parrot to Applications.
+2. Open Parrot from Applications. The first launch downloads the private voice engine. Click the waveform in the menu bar to see progress.
+3. Allow Parrot in **System Settings → Privacy & Security → Accessibility** so it can read your selection.
+
+After setup, the bundled Fast voice model works offline. macOS 14 or later is required.
+
+### Build from source
+
+Use Xcode Command Line Tools and run:
+
 ```sh
 git clone https://github.com/brahimhamichan/parrot.git
 cd parrot
@@ -50,9 +60,7 @@ The installer:
 3. Builds `~/Applications/Parrot.app` with the voice model bundled inside. On first launch it adds itself to Login Items (toggle in Settings).
 4. Adds Parrot commands to Tinycast, if Tinycast is installed.
 
-Then allow **Parrot** in **System Settings → Privacy & Security → Accessibility**. That's the only manual step; macOS requires it so Parrot can read selected text.
-
-The first install downloads about 100 MB of Python packages. After that Parrot works without internet.
+The source build also requires Accessibility permission. The same offline Fast model is included.
 
 ## Usage
 
@@ -111,13 +119,13 @@ open -g "parrot://voice?bm_george"
 
 ## Requirements
 
-- macOS 14 Sonoma or later (developed on Apple Silicon)
-- Xcode Command Line Tools (the installer prompts for them)
+- macOS 14 Sonoma or later
+- An internet connection for initial voice engine setup and optional model downloads
 - About 400 MB of disk space and about 320 MB of RAM while running
 
 ## Privacy
 
-Parrot makes no network requests, except downloading a model from the [kokoro-onnx releases](https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0) when you click Download. The daemon only listens on `127.0.0.1`. Selected text goes to the local model and is never stored. A small diagnostic log (no text content) is written to `~/Library/Logs/Parrot.log`.
+On first launch, Parrot downloads Python and pinned dependencies for the local voice engine. It downloads optional models from the [kokoro-onnx releases](https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0) when you click Download. The daemon only listens on `127.0.0.1`. Selected text goes to the local model and is never stored. A small diagnostic log (no text content) is written to `~/Library/Logs/Parrot.log`.
 
 ## Troubleshooting
 
@@ -126,9 +134,12 @@ Parrot makes no network requests, except downloading a model from the [kokoro-on
 | It beeps and doesn't speak | Grant Accessibility access (see Install). If the log shows `trusted=0`, remove Parrot from the Accessibility list and add it again. |
 | ⌥Esc does nothing | Turn off macOS's own **Speak selection** (Accessibility → Spoken Content), which uses the same shortcut. |
 | No menu-bar icon | It may be hidden behind the notch. Run `open parrot://open` (or the Tinycast **Parrot: Settings** command); the popover then opens at the top of the screen. |
-| Speech never starts | Check `~/Library/Logs/Parrot.log`, and run `./install.sh` again to rebuild the Python environment. |
+| Voice engine setup failed | Connect to the internet and click **Retry Setup** in the popover. Setup details are in `~/Library/Application Support/Parrot/runtime-setup.log`. |
+| Speech never starts | Check `~/Library/Logs/Parrot.log`. If you built from source, run `./install.sh` again to rebuild its Python environment. |
 
 ## Uninstall
+
+Quit Parrot and move it from Applications to the Trash. To remove its data and a source installation, run:
 
 ```sh
 osascript -e 'tell application id "dev.brahim.parrot" to quit'
