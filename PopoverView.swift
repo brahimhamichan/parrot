@@ -9,6 +9,13 @@ struct PopoverView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
+            if p.runtimeSetupFailed {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Voice engine setup failed").font(.subheadline.weight(.semibold))
+                    Text("Check your internet connection and try again.").font(.caption).foregroundStyle(.secondary)
+                    Button("Retry Setup") { p.startRuntime() }.controlSize(.small)
+                }
+            }
             if p.showSettings {
                 Section2(title: "Model") { VStack(spacing: 4) { ForEach(voiceModels) { ModelRow(m: $0) } } }
                 Divider()
@@ -37,7 +44,7 @@ struct PopoverView: View {
                 Text(statusText).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            if !p.daemonReady { ProgressView().controlSize(.small) }
+            if !p.daemonReady && !p.runtimeSetupFailed { ProgressView().controlSize(.small) }
             Button { p.showSettings.toggle() } label: {
                 Image(systemName: p.showSettings ? "chevron.backward" : "gearshape").frame(width: 22, height: 22)
             }
@@ -47,6 +54,8 @@ struct PopoverView: View {
 
     var statusText: String {
         if p.showSettings { return "Settings" }
+        if p.settingUpRuntime { return "Downloading the voice engine…" }
+        if p.runtimeSetupFailed { return "Voice engine unavailable" }
         if !p.daemonReady { return "Loading voice model…" }
         return ["speaking": "Speaking…", "paused": "Paused"][p.status] ?? "Select text anywhere and press ⌥Esc"
     }

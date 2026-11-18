@@ -98,11 +98,14 @@ final class Parrot: NSObject, ObservableObject, URLSessionDownloadDelegate {
     @Published var trusted = AXIsProcessTrusted()
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
     @Published var daemonReady = false
+    @Published var settingUpRuntime = false
+    @Published var runtimeSetupFailed = false
     @Published var toast: String?
     @Published var showSettings = false
 
     var onStatusChange: (() -> Void)?
-    var daemon: Process?
+    private var daemon: Process?
+    private var runtimeSetup: Process?
     private var tasks: [String: URLSessionDownloadTask] = [:]
     private lazy var session = URLSession(configuration: .default, delegate: self, delegateQueue: .main)
 
@@ -112,19 +115,96 @@ final class Parrot: NSObject, ObservableObject, URLSessionDownloadDelegate {
     }
 
     // Daemon lifecycle
-    func startDaemon() {
+    func startRuntime() {
+        guard daemon == nil, runtimeSetup == nil else { return }
+        runtimeSetupFailed = false
+        guard let bootstrap = Bundle.main.url(forResource: "bootstrap-runtime", withExtension: "sh") else {
+            // Source builds still use the environment installed by install.sh.
+            startDaemon(with: supportDir.appending(path: "venv/bin/python"))
+            return
+        }
+
+        let runtime = supportDir.appending(path: "runtime-v1")
+        let python = runtime.appending(path: "bin/python")
+        let files = FileManager.default
+        if files.isExecutableFile(atPath: python.path) {
+            startDaemon(with: python)
+            return
+        }
+
+        let staging = supportDir.appending(path: ".runtime-\(UUID().uuidString)")
+        let logURL = supportDir.appending(path: "runtime-setup.log")
+        let process = Process()
+        process.executableURL = URL(filePath: "/bin/sh")
+        process.environment = ["PATH": "/usr/bin:/bin", "HOME": files.homeDirectoryForCurrentUser.path]
+        process.arguments = [
+            bootstrap.path, Bundle.main.bundleURL.appending(path: "Contents/Helpers/uv").path,
+            supportDir.path, staging.path,
+            bootstrap.deletingLastPathComponent().appending(path: "requirements-macos.lock").path
+        ]
+
+        do {
+            try files.createDirectory(at: supportDir, withIntermediateDirectories: true)
+            files.createFile(atPath: logURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
+            let log = try FileHandle(forWritingTo: logURL)
+            process.standardOutput = log
+            process.standardError = log
+            process.terminationHandler = { [weak self] finished in
+                DispatchQueue.main.async {
+                    defer { try? files.removeItem(at: staging) }
+                    guard let self, self.runtimeSetup === finished else { return }
+                    self.runtimeSetup = nil
+                    self.settingUpRuntime = false
+                    if finished.terminationStatus == 0, !files.isExecutableFile(atPath: python.path) {
+                        do {
+                            try files.moveItem(at: staging, to: runtime)
+                        } catch {
+                            dbg("runtime setup could not install the completed environment")
+                        }
+                    }
+                    if files.isExecutableFile(atPath: python.path) {
+                        self.startDaemon(with: python)
+                    } else {
+                        self.runtimeSetupFailed = true
+                    }
+                }
+            }
+            try process.run()
+            runtimeSetup = process
+            settingUpRuntime = true
+        } catch {
+            runtimeSetupFailed = true
+        }
+    }
+
+    func stopProcesses() {
+        let setup = runtimeSetup
+        let runningDaemon = daemon
+        runtimeSetup = nil
+        daemon = nil
+        if setup?.isRunning == true { setup?.terminate() }
+        if runningDaemon?.isRunning == true { runningDaemon?.terminate() }
+    }
+
+    private func startDaemon(with python: URL) {
         let p = Process()
-        p.executableURL = supportDir.appendingPathComponent("venv/bin/python")
-        p.arguments = [Bundle.main.path(forResource: "speakd", ofType: "py")!]
-        p.terminationHandler = { [weak self] _ in  // restart if it crashes
+        p.executableURL = python
+        p.arguments = ["-I", Bundle.main.path(forResource: "speakd", ofType: "py")!]
+        p.terminationHandler = { [weak self] _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 guard let self, self.daemon != nil else { return }
-                self.daemonReady = false; self.startDaemon()
+                self.daemonReady = false
+                self.startDaemon(with: python)
             }
         }
-        try? p.run()
-        daemon = p
-        syncWhenReady()
+        do {
+            try p.run()
+            daemon = p
+            syncWhenReady()
+        } catch {
+            dbg("could not launch Python runtime")
+            runtimeSetupFailed = true
+        }
     }
 
     /// Wait for the daemon to come up, then push saved settings and load the voice list.
@@ -152,6 +232,7 @@ final class Parrot: NSObject, ObservableObject, URLSessionDownloadDelegate {
     // Playback
     func toggleSpeak() {
         dbg("read status=%@ trusted=%d", status, AXIsProcessTrusted())
+        guard daemonReady else { NSSound.beep(); return }
         if status != "idle" { stop(); return }
         guard let text = selectedText(), !text.isEmpty else { dbg("no selection"); NSSound.beep(); return }
         dbg("speaking %d chars", text.count)
@@ -229,7 +310,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Prompt for Accessibility once; needed to read selections and post ⌘C.
         AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary)
         if !defaults.bool(forKey: "didSetLoginItem") { parrot.setLaunchAtLogin(true); defaults.set(true, forKey: "didSetLoginItem") }
-        parrot.startDaemon()
+        parrot.startRuntime()
 
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.action = #selector(togglePopover)
@@ -314,7 +395,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func applicationWillTerminate(_ n: Notification) { let d = parrot.daemon; parrot.daemon = nil; d?.terminate() }
+    func applicationWillTerminate(_ n: Notification) { parrot.stopProcesses() }
 }
 
 @main
